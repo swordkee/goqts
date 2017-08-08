@@ -1,0 +1,85 @@
+%module(directors="1") goqts
+/* Copyright 2011 The Go Authors.  All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.  */
+
+/* An example of writing a C++ virtual function in Go.  */
+
+%module(directors="1") goqts
+
+%init %{
+  //printf("Initialization goqts done.\n");
+%}
+
+%typemap(gotype) (char **ppInstrumentID, int nCount) "[]string"
+
+%typemap(in) (char **ppInstrumentID, int nCount)
+%{
+  {
+    int i;
+    _gostring_* a;
+
+    $2 = $input.len;
+    a = (_gostring_*) $input.array;
+    $1 = (char **) malloc (($2 + 1) * sizeof (char *));
+    for (i = 0; i < $2; i++) {
+
+      /* Not work */
+      //_gostring_ *ps = &a[i];
+      //$1[i] = (char *) ps->p;
+      //$1[i][ps->n] = '\0';
+
+      /*Work well*/
+      _gostring_ *ps = &a[i];
+      $1[i] = (char*) malloc(ps->n + 1);
+      memcpy($1[i], ps->p, ps->n);
+      $1[i][ps->n] = '\0';
+    }
+    $1[i] = NULL;
+  }
+%}
+
+%typemap(argout) (char **ppInstrumentID, int nCount) "" /* override char *[] default */
+
+%typemap(freearg) (char **ppInstrumentID, int nCount)
+%{
+  {
+    int i;
+    for (i = 0; i < $2; i++)
+    {
+      free ($1[i]);
+    }
+    free($1);
+  }
+%}
+
+
+/* Includes the header files in the wrapper code */
+%header %{
+#include <memory>
+#include "./api/QTSApi_v2.6.0/include/QTSDataType.h"
+#include "./api/QTSApi_v2.6.0/include/QTSStruct.h"
+#include "./api/QTSApi_v2.6.0/include/QTSDataFieldDefine.h"
+#include "./api/QTSApi_v2.6.0/include/GTAQTSInterfaceBase.h"
+%}
+
+/* Parse the header files to generate wrappers */
+%include "std_string.i"
+
+%feature("director") IGTAQTSCallbackBase;
+
+%include "./api/QTSApi_v2.6.0/include/QTSDataType.h"
+%include "./api/QTSApi_v2.6.0/include/QTSStruct.h"
+%include "./api/QTSApi_v2.6.0/include/QTSDataFieldDefine.h"
+%include "./api/QTSApi_v2.6.0/include/GTAQTSInterfaceBase.h"
+
+%rename(__brace__)     CDataBuffer::operator [];
+/*%rename(SZSEL1_Statics)     SZSEL1_Static;
+%rename(CFFEXL2_Statics)     CFFEXL2_Static;
+%rename(CZCEL1_Statics)     CZCEL1_Static;
+%rename(DCEL1_Statics)     DCEL1_Static;
+%rename(DCEL2_Statics)     DCEL2_Static;
+%rename(SHFEL1_Statics)     SHFEL1_Static;*/
+%template(IntCDataBuffer) CDataBuffer<int>;
+%template(CharCDataBuffer) CDataBuffer<char>;
+%template(StockCDataBuffer) CDataBuffer<StockSymbol>;
